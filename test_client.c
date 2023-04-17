@@ -17,7 +17,7 @@
 #define MIN_CURRENT 15
 
 modbus_t *ctx_ELY=NULL;
-
+long zeitstempel_spuelen=0;
 char pfad[100]="./ELY_results/";
 
 
@@ -93,23 +93,54 @@ uint16_t read_status_word1(uint16_t  statuswort, int order){
 	}
 	return error;
 }
-void bit_order_write(uint16_t *werte, int order, int error_state, int current){
+
+int check_spuelen(long zeitstempel){
+	FILE *f=NULL;
 	int wert=0;
-	int k,l;
+	char file_spuelen_bin_pfad[]="file_spuelen.bin";
+	f=fopen(file_spuelen_bin_pfad,"rb");
+	if (f!=NULL){
+		fread(&zeitstempel_spuelen, sizeof(long), 1, f);
+		fclose(f);
+	}else{
+		char kommando[]="sudo touch file_spuelen.bin" ;
+		f=popen(kommando,"r");
+		fclose(f);
+	}
+	if(zeitstempel-zeitstempel_spuelen >= 24*3600){
+		zeitstempel_spuelen=zeitstempel;
+		f=fopen(file_spuelen_bin_pfad,"wb");
+		fwrite(&zeitstempel_spuelen,sizeof(long),1,f);
+		fclose(f)
+		wert=1;
+	}else{
+		wert=0;	
+	}
+	return wert;
+}
+void bit_order_write(uint16_t *werte, int order, int error_state, int current, long zeitstempel){
+	int wert=0;
+	int k,l, m;
 	if (order==0){
 			k=0;
 			l=1;
+			m=3;
 	}else{
 		k=15;
 		l=14;
+		m=12;
 	}
 	wert+=error_state*pow(2,k);
 	if(current>0){
 			wert+=pow(2,l);
 	}
+	if (check_spuelen(zeitstempel)==1){
+		wert+=pow(2,m);	
+	}	
 	werte[0]=wert;
 	
 }
+
 
 // args ip slave_id debug port
 int main(int argc, char *argv[]) {
@@ -229,7 +260,7 @@ int main(int argc, char *argv[]) {
 			sigfunc(0);
 		}
 		
-		bit_order_write(dest_write,atoi(argv[7]),error,current_actual);
+		bit_order_write(dest_write,atoi(argv[7]),error,current_actual, zeitpuffer[0]);
 		dest_write[2]=current_actual;
 		if (current_actual > MAX_CURRENT){
 			current_actual=MAX_CURRENT;
