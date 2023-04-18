@@ -15,6 +15,7 @@
 #define WRITE_END 0x8002
 #define MAX_CURRENT 52
 #define MIN_CURRENT 15
+#define TSPUELEN 300
 
 modbus_t *ctx_ELY=NULL;
 long zeitstempel_spuelen=0;
@@ -113,6 +114,10 @@ int check_spuelen(long zeitstempel){
 		fwrite(&zeitstempel_spuelen,sizeof(long),1,f);
 		fclose(f)
 		wert=1;
+		zeitdiff_spuelen=zeitstempel;
+	} else if(zeitstempel - zeitstempel_spuelen < TSPUELEN){
+		wert=1;	
+	}
 	}else{
 		wert=0;	
 	}
