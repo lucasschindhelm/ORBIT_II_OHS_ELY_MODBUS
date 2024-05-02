@@ -80,7 +80,7 @@ void convert_H2flow_to_current(int *array, int value){
 	fptr = fopen("Volumeflow.bin", "wb");
 	fwrite(array,sizeof(int),CMAX-C0+1,fptr);
 	fclose(fptr);
-	current=interpolate_h2_flow(array,vakue);
+	current=interpolate_h2_flow(array,value);
 	free(array);
 	return current;
 }
