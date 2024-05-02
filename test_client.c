@@ -16,12 +16,86 @@
 #define MAX_CURRENT 52
 #define MIN_CURRENT 15
 #define TSPUELEN 300
+#define C0 0
+#define CMAX 52
+#define ELY_MASK_MODE 1
 
 modbus_t *ctx_ELY=NULL;
 long zeitstempel_spuelen=0;
 char pfad[100]="./ELY_results/";
 
 
+int interpolate_h2_flow(int *array, int wert){
+	int i=0;
+	int m[CMAX-1];
+	int onpoint=0;
+	int pos=0;
+	if (wert >=array[0]) {
+			return CMAX;
+	}
+	if (wert < array[CMAX-1]){
+			return 0;
+	}
+	for(i=1; i < CMAX; i++){
+		if (wert > array[i]) {
+			onpoint=0;
+			pos=i-1;
+			break;
+		}else if (wert == array[i]){
+			onpoint=1;
+			pos=i;
+			break;
+		}
+	}
+	
+	
+	if (onpoint==1){
+		return CMAX-pos;
+	}else{
+		double h=round(CMAX-pos- 1/((double)array[pos+1]- (double) array[pos])*(wert-array[pos]));
+		return (int) h;
+	}
+	return 0;
+
+}
+int convert_power_to_current(int power){
+	double current=round(0.0101*double(power)+1.9028);
+	return (int) current;
+}
+
+void convert_H2flow_to_current(int *array, int value){
+	double h=0;
+	int current=0;
+	array=(int *) malloc(sizeof(int)*(CMAX-C0+1));
+	FILE *fptr;
+	fptr = fopen("ELY_onlyFlowrate.txt", "r");
+	char value[10];
+	int lc=0;
+	while(fgets(value, 10, fptr)) {
+		h=1000*atof(value);
+		array[lc]= (int) h ;
+		lc+=1;
+	}
+	fclose(fptr); 
+	fptr = fopen("Volumeflow.bin", "wb");
+	fwrite(array,sizeof(int),CMAX-C0+1,fptr);
+	fclose(fptr);
+	current=interpolate_h2_flow(array,vakue);
+	return current;
+}
+
+int convert_input_ELY(int eingabe, int *array){
+	if ELY_MASK_MODE==0{
+		return eingabe;
+	}
+	if ELY_MASK_MODE==1
+		return convert_power_to_current(eingabe);
+	}
+	if ELY_MASK_MODE==2
+		return convert_H2flow_to_current(array, eingabe);
+	}
+	return 0;
+}
 void sigfunc(int sig){
        	//fprintf(stderr, "%d\n", sig);
 	if (ctx_ELY!=NULL){
@@ -112,9 +186,8 @@ int check_spuelen(long zeitstempel){
 		zeitstempel_spuelen=zeitstempel;
 		f=fopen(file_spuelen_bin_pfad,"wb");
 		fwrite(&zeitstempel_spuelen,sizeof(long),1,f);
-		fclose(f)
+		fclose(f);
 		wert=1;
-		zeitdiff_spuelen=zeitstempel;
 	} else if(zeitstempel - zeitstempel_spuelen < TSPUELEN){
 		wert=1;	
 	}
@@ -150,6 +223,8 @@ void bit_order_write(uint16_t *werte, int order, int error_state, int current, l
 // args ip slave_id debug port
 int main(int argc, char *argv[]) {
 	srand(time(NULL));
+	
+	int *h2_to_current_mask;
 	// nötige Elemente für Wartefunktion
 		struct timespec tim, tim2, tim3, tim4;
 		tim.tv_sec  = 10; // additon of seconds and nanoseconds, tim2 stores residual time if sleep is interrupted
@@ -214,6 +289,7 @@ int main(int argc, char *argv[]) {
 				t_step=atoi(first_line);
 				fprintf(stderr,"%d",t_step);
 				current_actual=atoi(strtok(NULL,","));
+		 		current_actual=convert_input_ELY(current_actual, h2_to_current_mask)
 		}
 		else{
 			sigfunc(0);
