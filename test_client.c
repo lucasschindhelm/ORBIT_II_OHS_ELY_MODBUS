@@ -81,6 +81,7 @@ void convert_H2flow_to_current(int *array, int value){
 	fwrite(array,sizeof(int),CMAX-C0+1,fptr);
 	fclose(fptr);
 	current=interpolate_h2_flow(array,vakue);
+	free(array);
 	return current;
 }
 
@@ -306,6 +307,7 @@ int main(int argc, char *argv[]) {
 			first_line=strtok(str,",");
 			t_step=atoi(first_line);
 			current_actual=atoi(strtok(NULL,","));
+			current_actual=convert_input_ELY(current_actual, h2_to_current_mask)
 		} else{
 			sigfunc(0);
 		}
