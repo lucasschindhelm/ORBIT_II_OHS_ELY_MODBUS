@@ -18,7 +18,7 @@
 #define TSPUELEN 300
 #define C0 0
 #define CMAX 52
-#define ELY_MASK_MODE 1
+#define ELY_MASK_MODE (1)
 
 modbus_t *ctx_ELY=NULL;
 long zeitstempel_spuelen=0;
@@ -59,11 +59,11 @@ int interpolate_h2_flow(int *array, int wert){
 
 }
 int convert_power_to_current(int power){
-	double current=round(0.0101*double(power)+1.9028);
+	double current=round(0.0101*((double) power)+1.9028);
 	return (int) current;
 }
 
-void convert_H2flow_to_current(int *array, int value){
+int convert_H2flow_to_current(int *array, int eingabe){
 	double h=0;
 	int current=0;
 	array=(int *) malloc(sizeof(int)*(CMAX-C0+1));
@@ -80,21 +80,19 @@ void convert_H2flow_to_current(int *array, int value){
 	fptr = fopen("Volumeflow.bin", "wb");
 	fwrite(array,sizeof(int),CMAX-C0+1,fptr);
 	fclose(fptr);
-	current=interpolate_h2_flow(array,value);
+	current=interpolate_h2_flow(array,eingabe);
 	free(array);
 	return current;
 }
 
 int convert_input_ELY(int eingabe, int *array){
-	if ELY_MASK_MODE==0{
-		return eingabe;
+	switch(ELY_MASK_MODE) {
+	case 0: return eingabe; break;
+	case 1: return convert_power_to_current(eingabe); break;
+	case 2: return convert_H2flow_to_current(array, eingabe); break;
+	default: fprintf(stderr, "Unbekannter Modus\n"); break;
 	}
-	if ELY_MASK_MODE==1
-		return convert_power_to_current(eingabe);
-	}
-	if ELY_MASK_MODE==2
-		return convert_H2flow_to_current(array, eingabe);
-	}
+	
 	return 0;
 }
 void sigfunc(int sig){
@@ -290,7 +288,8 @@ int main(int argc, char *argv[]) {
 				t_step=atoi(first_line);
 				fprintf(stderr,"%d",t_step);
 				current_actual=atoi(strtok(NULL,","));
-		 		current_actual=convert_input_ELY(current_actual, h2_to_current_mask)
+		 		current_actual=convert_input_ELY(current_actual, h2_to_current_mask);
+		 		clock_gettime(CLOCK_REALTIME, &tim4);
 		}
 		else{
 			sigfunc(0);
@@ -307,7 +306,8 @@ int main(int argc, char *argv[]) {
 			first_line=strtok(str,",");
 			t_step=atoi(first_line);
 			current_actual=atoi(strtok(NULL,","));
-			current_actual=convert_input_ELY(current_actual, h2_to_current_mask)
+			current_actual=convert_input_ELY(current_actual, h2_to_current_mask);
+			clock_gettime(CLOCK_REALTIME, &tim4);
 		} else{
 			sigfunc(0);
 		}
