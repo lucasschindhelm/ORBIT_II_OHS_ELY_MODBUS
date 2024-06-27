@@ -190,7 +190,7 @@ int check_spuelen(long zeitstempel){
 	} else if(zeitstempel - zeitstempel_spuelen < TSPUELEN){
 		wert=1;	
 	}
-	}else{
+	else{
 		wert=0;	
 	}
 	return wert;
