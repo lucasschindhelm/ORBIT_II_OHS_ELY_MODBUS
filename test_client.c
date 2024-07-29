@@ -19,7 +19,7 @@
 #define C0 0
 #define CMAX 52
 #define ELY_MASK_MODE (2)
-
+#define CONTIMODE (1)
 
 modbus_t *ctx_ELY=NULL;
 long zeitstempel_spuelen=0;
