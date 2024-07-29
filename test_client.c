@@ -18,7 +18,8 @@
 #define TSPUELEN 300
 #define C0 0
 #define CMAX 52
-#define ELY_MASK_MODE (1)
+#define ELY_MASK_MODE (2)
+
 
 modbus_t *ctx_ELY=NULL;
 long zeitstempel_spuelen=0;
@@ -278,7 +279,8 @@ int main(int argc, char *argv[]) {
 	uint16_t zw_write[5]={0};
 	uint16_t *dest_write=&zw_write[0];
    /* opening file for reading */
-   fp = fopen(pfad_exp , "r");
+   if(!CONTIMODE){
+	fp = fopen(pfad_exp , "r");
    if(fp == NULL) {
       perror("Error opening file");
       return(-1);
@@ -294,13 +296,18 @@ int main(int argc, char *argv[]) {
 		else{
 			sigfunc(0);
 		}
+   } else{
+	fp=fopen("ely_load_bin","rb");
+	fread(&current_actual,sizeof(int),1,fp);
+	fclose(fp);
+   }
 	clock_gettime(CLOCK_REALTIME, &tim4);
 	for(;;){
 		check_signal();
 		clock_gettime(CLOCK_REALTIME, &tim3);
 		zeitpuffer[0]=(long) tim3.tv_sec;
 		zeitpuffer[1]=floor(tim3.tv_nsec / 1.0e8); // Zehntelsekunden
-		if(t_step<(tim3.tv_sec-tim4.tv_sec)){
+		if(t_step<(tim3.tv_sec-tim4.tv_sec) && !CONTIMODE){
 		
 		 if( fgets (str, 60, fp)!=NULL ) {
 			first_line=strtok(str,",");
@@ -311,6 +318,10 @@ int main(int argc, char *argv[]) {
 		} else{
 			sigfunc(0);
 		}
+		}else{
+			fp=fopen("ely_load_bin","rb");
+			fread(&current_actual,sizeof(int),1,fp);
+			fclose(fp);
 		}
 		// run ELY read & write
 		fprintf(stderr,"\nStartadresse: %d\n",READ_START-atoi(argv[5]));
